@@ -11,7 +11,6 @@
       background: #111; font-family: monospace;
       overflow: hidden; touch-action: none; user-select: none;
     }
-
     #landing {
       position: fixed; inset: 0; background: #111;
       display: flex; flex-direction: column;
@@ -19,10 +18,7 @@
       gap: 28px; z-index: 100; transition: opacity 0.3s;
     }
     #landing.hide { opacity: 0; pointer-events: none; }
-    #landing h1 {
-      font-size: clamp(3rem, 14vw, 6rem);
-      font-weight: 900; color: #fff; letter-spacing: 0.25em;
-    }
+    #landing h1 { font-size: clamp(3rem, 14vw, 6rem); font-weight: 900; color: #fff; letter-spacing: 0.25em; }
     #startBtn {
       background: #fff; color: #111; border: none;
       font-family: monospace; font-weight: 900;
@@ -40,44 +36,34 @@
     .skin-swatch.selected { border-color: #fff; }
 
     #robotScreen {
-      position: fixed; inset: 0;
-      display: none; flex-direction: column;
-      align-items: center; justify-content: center;
+      position: fixed; inset: 0; display: none;
+      flex-direction: column; align-items: center; justify-content: center;
       background: #111;
     }
     #robotScreen.active { display: flex; }
-
     #cam { display: none; }
     #motionCanvas { display: none; }
 
     .eyes-wrap {
-      display: flex;
-      gap: clamp(28px, 9vw, 64px);
+      display: flex; gap: clamp(28px, 9vw, 64px);
       align-items: center; justify-content: center;
     }
     .eye {
       width: clamp(130px, 32vw, 210px);
       height: clamp(130px, 32vw, 210px);
-      border-radius: 22px;
-      position: relative; overflow: hidden;
-      background: transparent;
+      border-radius: 22px; position: relative;
+      overflow: hidden; background: transparent;
       transition: height 0.08s linear;
     }
     .eye.blink { height: 10px !important; border-radius: 5px; }
     .dot {
-      width: 28%; height: 28%;
-      border-radius: 8px; background: #fff;
-      position: absolute; top: 50%; left: 50%;
+      width: 28%; height: 28%; border-radius: 8px;
+      background: #fff; position: absolute;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       will-change: transform;
     }
 
-    #debugInfo {
-      position: fixed; top: 8px; left: 8px;
-      color: #444; font-size: 0.6rem;
-      letter-spacing: 0.1em; z-index: 300;
-      line-height: 1.6;
-    }
     #debugDot {
       position: fixed; top: 8px; right: 8px;
       width: 10px; height: 10px;
@@ -85,15 +71,18 @@
     }
     #debugDot.cam-ok { background: #3bff7a; }
     #debugDot.motion { background: #ffcc00; }
-
+    #debugInfo {
+      position: fixed; top: 8px; left: 8px;
+      color: #444; font-size: 0.6rem; letter-spacing: 0.1em;
+      z-index: 300; line-height: 1.8;
+    }
     #backBtn {
       position: fixed; bottom: 24px; left: 50%;
       transform: translateX(-50%);
       background: transparent; border: 1px solid #333;
-      color: #333; font-family: monospace;
-      font-size: 0.65rem; letter-spacing: 0.15em;
-      padding: 8px 22px; border-radius: 4px;
-      cursor: pointer; z-index: 200;
+      color: #333; font-family: monospace; font-size: 0.65rem;
+      letter-spacing: 0.15em; padding: 8px 22px;
+      border-radius: 4px; cursor: pointer; z-index: 200;
     }
   </style>
 </head>
@@ -118,28 +107,22 @@
   </div>
 
   <script>
-    const SKINS = [
-      '#ffffff','#ff3b3b','#3b8fff','#3bff7a',
-      '#ffcc00','#ff6aff','#ff8c00','#00e5ff'
-    ];
+    const SKINS = ['#ffffff','#ff3b3b','#3b8fff','#3bff7a','#ffcc00','#ff6aff','#ff8c00','#00e5ff'];
     let activeSkin = 0;
-    const swatchContainer = document.getElementById('skins');
     SKINS.forEach((c, i) => {
       const sw = document.createElement('div');
       sw.className = 'skin-swatch' + (i === 0 ? ' selected' : '');
       sw.style.background = c;
       sw.onclick = () => {
         activeSkin = i;
-        document.querySelectorAll('.skin-swatch').forEach((el, j) =>
-          el.classList.toggle('selected', j === i));
+        document.querySelectorAll('.skin-swatch').forEach((el, j) => el.classList.toggle('selected', j === i));
         applyDotColor();
       };
-      swatchContainer.appendChild(sw);
+      document.getElementById('skins').appendChild(sw);
     });
     function applyDotColor() {
-      const c = SKINS[activeSkin];
-      dotL.style.background = c;
-      dotR.style.background = c;
+      dotL.style.background = SKINS[activeSkin];
+      dotR.style.background = SKINS[activeSkin];
     }
 
     let stream = null;
@@ -150,15 +133,15 @@
     let targetX = 0, targetY = 0;
     let currentX = 0, currentY = 0;
 
-    const video    = document.getElementById('cam');
-    const motCanvas= document.getElementById('motionCanvas');
-    const motCtx   = motCanvas.getContext('2d', { willReadFrequently: true });
-    const dotL     = document.getElementById('dotL');
-    const dotR     = document.getElementById('dotR');
-    const eyeL     = document.getElementById('eyeL');
-    const eyeR     = document.getElementById('eyeR');
-    const debugDot = document.getElementById('debugDot');
-    const debugInfo= document.getElementById('debugInfo');
+    const video     = document.getElementById('cam');
+    const motCanvas = document.getElementById('motionCanvas');
+    const motCtx    = motCanvas.getContext('2d', { willReadFrequently: true });
+    const dotL      = document.getElementById('dotL');
+    const dotR      = document.getElementById('dotR');
+    const eyeL      = document.getElementById('eyeL');
+    const eyeR      = document.getElementById('eyeR');
+    const debugDot  = document.getElementById('debugDot');
+    const debugInfo = document.getElementById('debugInfo');
 
     async function startRobot() {
       applyDotColor();
@@ -185,19 +168,17 @@
           document.getElementById('robotScreen').classList.add('active');
         }, 300);
 
-        // Wait for real video frames
         await new Promise(resolve => {
-          const check = () =>
-            (video.videoWidth > 0 && video.readyState >= 2) ? resolve() : requestAnimationFrame(check);
+          const check = () => (video.videoWidth > 0 && video.readyState >= 2) ? resolve() : requestAnimationFrame(check);
           check();
         });
 
-        // FIX 1: use actual video dimensions so drawImage captures real pixels
         motCanvas.width  = video.videoWidth;
         motCanvas.height = video.videoHeight;
-        debugInfo.textContent = `cam: ${video.videoWidth}x${video.videoHeight}`;
 
         debugDot.classList.add('cam-ok');
+        debugInfo.textContent = `cam: ${video.videoWidth}x${video.videoHeight}`;
+
         startMotion();
         startBlink();
         smoothLoop();
@@ -208,13 +189,9 @@
     }
 
     function startMotion() {
-      // FIX 2: lower threshold — phones compress video heavily, diffs are small
-      const MOTION_THRESHOLD = 15;
-      // FIX 3: lower min pixels — small movements matter
-      const MIN_PIXELS = 4;
-      const DECAY = 0.90;
-
-      let frameCount = 0;
+      const THRESHOLD = 18;   // per-pixel diff to count as motion
+      const MIN_PX   = 6;     // minimum changed pixels to trust centroid
+      const DECAY    = 0.88;  // drift back to center when no motion
 
       function detect() {
         if (!video.videoWidth || video.readyState < 2) {
@@ -223,63 +200,58 @@
         }
 
         try {
-          motCtx.drawImage(video, 0, 0, motCanvas.width, motCanvas.height);
-
-          // FIX 4: sample every 2nd pixel in each direction (4x faster, same quality)
           const w = motCanvas.width;
           const h = motCanvas.height;
+
+          motCtx.drawImage(video, 0, 0, w, h);
+          const { data } = motCtx.getImageData(0, 0, w, h);
+
+          // Build grayscale — sample every 2nd pixel for speed
           const step = 2;
-          const sampledW = Math.floor(w / step);
-          const sampledH = Math.floor(h / step);
-          const totalSampled = sampledW * sampledH;
+          const sw = Math.floor(w / step);
+          const sh = Math.floor(h / step);
+          const gray = new Uint8Array(sw * sh);
 
-          const raw = motCtx.getImageData(0, 0, w, h);
-          const data = raw.data;
-
-          const gray = new Uint8Array(totalSampled);
-          let si = 0;
+          let idx = 0;
           for (let y = 0; y < h; y += step) {
             for (let x = 0; x < w; x += step) {
-              const off = (y * w + x) * 4;
-              gray[si++] = (data[off] * 77 + data[off+1] * 150 + data[off+2] * 29) >> 8;
+              const o = (y * w + x) * 4;
+              gray[idx++] = (data[o] * 77 + data[o+1] * 150 + data[o+2] * 29) >> 8;
             }
           }
 
           if (prevGray && prevGray.length === gray.length) {
             let sumX = 0, sumY = 0, count = 0;
-            for (let i = 0; i < totalSampled; i++) {
-              const diff = Math.abs(gray[i] - prevGray[i]);
-              if (diff > MOTION_THRESHOLD) {
-                const px = i % sampledW;
-                const py = (i / sampledW) | 0;
-                sumX += px;
-                sumY += py;
+
+            for (let i = 0; i < gray.length; i++) {
+              if (Math.abs(gray[i] - prevGray[i]) > THRESHOLD) {
+                sumX += i % sw;
+                sumY += (i / sw) | 0;
                 count++;
               }
             }
 
-            if (count > MIN_PIXELS) {
-              // front camera is mirrored — flip X so eyes follow correctly
-              const nx = -((sumX / count / sampledW) - 0.5) * 2;
-              const ny =  ((sumY / count / sampledH) - 0.5) * 2;
-              targetX = Math.max(-1, Math.min(1, nx));
-              targetY = Math.max(-1, Math.min(1, ny));
+            if (count >= MIN_PX) {
+              // centroid in [-1, 1] space
+              // front camera is mirrored so flip X: motion on left of frame = target moves right
+              const cx =  -((sumX / count / sw) - 0.5) * 2;
+              const cy =   (sumY / count / sh - 0.5) * 2;
+              targetX = Math.max(-1, Math.min(1, cx));
+              targetY = Math.max(-1, Math.min(1, cy));
               debugDot.classList.add('motion');
-              debugInfo.textContent = `cam: ${w}x${h} | motion px: ${count} | tx:${targetX.toFixed(2)} ty:${targetY.toFixed(2)}`;
+              debugInfo.textContent = `cam: ${w}x${h} | px:${count} | x:${targetX.toFixed(2)} y:${targetY.toFixed(2)}`;
             } else {
-              debugDot.classList.remove('motion');
-              // FIX 5: decay back toward center only — don't snap
+              // no meaningful motion — drift back toward center
               targetX *= DECAY;
               targetY *= DECAY;
-              frameCount++;
-              if (frameCount % 30 === 0)
-                debugInfo.textContent = `cam: ${w}x${h} | waiting... (px<${MIN_PIXELS}: ${count})`;
+              debugDot.classList.remove('motion');
+              debugInfo.textContent = `cam: ${w}x${h} | idle (${count}px)`;
             }
           }
 
           prevGray = gray;
         } catch(err) {
-          console.warn('motion frame err:', err.message);
+          console.warn('frame err:', err.message);
         }
 
         animFrame = requestAnimationFrame(detect);
@@ -289,17 +261,12 @@
     }
 
     function smoothLoop() {
-      // FIX 6: higher LERP = snappier response, dots visibly follow motion
-      const LERP = 0.12;
-
+      const LERP = 0.10;
       function step() {
-        // FIX 7: use offsetWidth not a fixed number — scales with screen
         const maxMove = eyeL.offsetWidth * 0.32;
         currentX += (targetX - currentX) * LERP;
         currentY += (targetY - currentY) * LERP;
-        const tx = currentX * maxMove;
-        const ty = currentY * maxMove;
-        const t = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
+        const t = `translate(calc(-50% + ${currentX * maxMove}px), calc(-50% + ${currentY * maxMove}px))`;
         dotL.style.transform = t;
         dotR.style.transform = t;
         smoothFrame = requestAnimationFrame(step);
@@ -309,19 +276,13 @@
 
     function startBlink() {
       function doBlink() {
-        eyeL.classList.add('blink');
-        eyeR.classList.add('blink');
+        eyeL.classList.add('blink'); eyeR.classList.add('blink');
         setTimeout(() => {
-          eyeL.classList.remove('blink');
-          eyeR.classList.remove('blink');
+          eyeL.classList.remove('blink'); eyeR.classList.remove('blink');
           if (Math.random() < 0.2) {
             setTimeout(() => {
-              eyeL.classList.add('blink');
-              eyeR.classList.add('blink');
-              setTimeout(() => {
-                eyeL.classList.remove('blink');
-                eyeR.classList.remove('blink');
-              }, 100);
+              eyeL.classList.add('blink'); eyeR.classList.add('blink');
+              setTimeout(() => { eyeL.classList.remove('blink'); eyeR.classList.remove('blink'); }, 100);
             }, 180);
           }
         }, 110);
@@ -336,8 +297,7 @@
       clearTimeout(blinkTimer);
       if (stream) stream.getTracks().forEach(t => t.stop());
       prevGray = null;
-      targetX = 0; targetY = 0;
-      currentX = 0; currentY = 0;
+      targetX = 0; targetY = 0; currentX = 0; currentY = 0;
       debugDot.classList.remove('cam-ok', 'motion');
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       document.getElementById('robotScreen').classList.remove('active');
@@ -347,10 +307,6 @@
       dotL.style.transform = 'translate(-50%, -50%)';
       dotR.style.transform = 'translate(-50%, -50%)';
     }
-
-    // FIX 8: REMOVED the global touchmove preventDefault — it was killing all touch events
-    // Only prevent default on the landing screen to stop scroll
-    document.getElementById('landing').addEventListener('touchmove', e => e.preventDefault(), { passive: false });
   </script>
 </body>
 </html>
