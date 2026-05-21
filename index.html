@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>R0B0T</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #050a0e;
+    --panel: #0b1318;
+    --accent: #00ffe5;
+    --accent2: #00ff88;
+    --eye-bg: #0d1f17;
+    --eye-border: #00ffe5;
+    --pupil: #00ff88;
+    --glow: 0 0 20px #00ffe5aa, 0 0 60px #00ffe533;
+    --danger: #ff3c5a;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    font-family: 'Orbitron', monospace;
+    color: var(--accent);
+    overflow: hidden;
+    touch-action: none;
+  }
+
+  /* ── LANDING SCREEN ── */
+  #landing {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 40px;
+    background: var(--bg);
+    z-index: 100;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+  #landing.hide {
+    opacity: 0;
+    transform: scale(1.08);
+    pointer-events: none;
+  }
+
+  .title-wrap {
+    text-align: center;
+    position: relative;
+  }
+  .title-wrap h1 {
+    font-size: clamp(2.5rem, 12vw, 5rem);
+    font-weight: 900;
+    letter-spacing: 0.25em;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    animation: flicker 4s infinite;
+  }
+  .title-wrap p {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(0.65rem, 3vw, 0.85rem);
+    color: #00ffe588;
+    letter-spacing: 0.2em;
+    margin-top: 6px;
+  }
+
+  .scan-line {
+    position: absolute;
+    top: 0; left: -10%; width: 120%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    animation: scan 3s linear infinite;
+    opacity: 0.4;
+  }
+
+  /* camera toggle */
+  .cam-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    border: 1.5px solid var(--accent);
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: var(--glow);
+  }
+  .cam-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    padding: 12px 22px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    outline: none;
+  }
+  .cam-toggle button.active {
+    background: var(--accent);
+    color: #050a0e;
+    font-weight: 700;
+  }
+  .cam-toggle .divider {
+    width: 1.5px;
+    height: 100%;
+    background: var(--accent);
+    align-self: stretch;
+  }
+
+  /* start button */
+  #startBtn {
+    position: relative;
+    background: transparent;
+    border: 2px solid var(--accent2);
+    color: var(--accent2);
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(0.9rem, 4vw, 1.2rem);
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    padding: clamp(14px, 4vw, 20px) clamp(40px, 12vw, 70px);
+    cursor: pointer;
+    border-radius: 6px;
+    text-shadow: 0 0 10px var(--accent2);
+    box-shadow: 0 0 20px #00ff8844, 0 0 60px #00ff8822;
+    transition: all 0.2s;
+    overflow: hidden;
+    outline: none;
+  }
+  #startBtn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent2);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  #startBtn:active::after { opacity: 0.15; }
+  #startBtn:hover {
+    box-shadow: 0 0 30px #00ff88aa, 0 0 80px #00ff8833;
+    transform: scale(1.03);
+  }
+
+  /* grid bg */
+  .grid-bg {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,229,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,229,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* corner decorations */
+  .corner {
+    position: absolute;
+    width: 20px; height: 20px;
+    border-color: var(--accent);
+    border-style: solid;
+    opacity: 0.5;
+  }
+  .corner.tl { top: 20px; left: 20px; border-width: 2px 0 0 2px; }
+  .corner.tr { top: 20px; right: 20px; border-width: 2px 2px 0 0; }
+  .corner.bl { bottom: 20px; left: 20px; border-width: 0 0 2px 2px; }
+  .corner.br { bottom: 20px; right: 20px; border-width: 0 2px 2px 0; }
+
+  /* ── ROBOT SCREEN ── */
+  #robotScreen {
+    position: fixed; inset: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    z-index: 50;
+  }
+  #robotScreen.active { display: flex; }
+
+  /* hidden video */
+  #cam { display: none; }
+  #motionCanvas { display: none; }
+
+  /* eyes container */
+  .eyes-wrap {
+    display: flex;
+    gap: clamp(24px, 8vw, 60px);
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  /* single eye */
+  .eye {
+    width: clamp(110px, 28vw, 180px);
+    height: clamp(110px, 28vw, 180px);
+    border-radius: 22%;
+    background: var(--eye-bg);
+    border: 2.5px solid var(--eye-border);
+    box-shadow: var(--glow), inset 0 0 30px #00ffe511;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: height 0.08s ease;
+  }
+
+  /* blink */
+  .eye.blink { height: 8% !important; border-radius: 4px; }
+
+  /* iris */
+  .iris {
+    width: 55%;
+    height: 55%;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #00ff88cc, #00805044 60%, #001a1044);
+    border: 2px solid var(--accent2);
+    box-shadow: 0 0 16px #00ff88cc, 0 0 40px #00ff8866;
+    position: absolute;
+    transition: transform 0.12s cubic-bezier(.2,.8,.4,1);
+    will-change: transform;
+  }
+
+  /* pupil dot */
+  .iris::after {
+    content: '';
+    position: absolute;
+    width: 28%; height: 28%;
+    background: #001a10;
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 6px #00ff8866;
+  }
+
+  /* scanline overlay on eye */
+  .eye::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0,255,229,0.03) 3px,
+      rgba(0,255,229,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* HUD text */
+  .hud {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: clamp(0.55rem, 2.5vw, 0.78rem);
+    color: #00ffe555;
+    letter-spacing: 0.18em;
+    margin-top: clamp(28px, 8vw, 50px);
+    text-align: center;
+    line-height: 2;
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+  #motionStatus {
+    color: var(--accent2);
+    text-shadow: 0 0 8px var(--accent2);
+    font-size: clamp(0.6rem, 2.8vw, 0.82rem);
+  }
+
+  /* back button */
+  #backBtn {
+    position: fixed;
+    bottom: clamp(16px, 5vh, 30px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: transparent;
+    border: 1.5px solid #00ffe544;
+    color: #00ffe544;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+    z-index: 200;
+  }
+  #backBtn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* animations */
+  @keyframes flicker {
+    0%,92%,94%,96%,100% { opacity: 1; }
+    93%,95% { opacity: 0.5; }
+  }
+  @keyframes scan {
+    0% { top: -2px; }
+    100% { top: 100%; }
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  /* noise overlay */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    opacity: 0.025;
+    pointer-events: none;
+    z-index: 999;
+  }
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<!-- LANDING -->
+<div id="landing">
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <div class="title-wrap">
+    <div class="scan-line"></div>
+    <h1>R0B0T</h1>
+    <p>VISUAL MOTION SYSTEM v2.4</p>
+  </div>
+
+  <div class="cam-toggle">
+    <button id="backCamBtn" class="active" onclick="selectCam('back')">BACK</button>
+    <div class="divider"></div>
+    <button id="frontCamBtn" onclick="selectCam('front')">FRONT</button>
+  </div>
+
+  <button id="startBtn" onclick="startRobot()">◈ INITIALIZE</button>
+</div>
+
+<!-- ROBOT SCREEN -->
+<div id="robotScreen">
+  <video id="cam" autoplay playsinline muted></video>
+  <canvas id="motionCanvas"></canvas>
+
+  <div class="eyes-wrap">
+    <div class="eye" id="eyeL">
+      <div class="iris" id="irisL"></div>
+    </div>
+    <div class="eye" id="eyeR">
+      <div class="iris" id="irisR"></div>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div id="motionStatus">SCANNING...</div>
+    <div>SYS.CAM &nbsp;●&nbsp; MOTION.TRACK &nbsp;●&nbsp; BLINK.AUTO</div>
+  </div>
+
+  <button id="backBtn" onclick="goBack()">← EXIT</button>
+</div>
+
+<script>
+  let camFacing = 'environment'; // default back
+  let stream = null;
+  let animFrame = null;
+  let prevData = null;
+  let blinkTimer = null;
+  let motionX = 0, motionY = 0; // normalized -1 to 1
+  let targetX = 0, targetY = 0;
+  let currentX = 0, currentY = 0;
+
+  const video = document.getElementById('cam');
+  const motCanvas = document.getElementById('motionCanvas');
+  const motCtx = motCanvas.getContext('2d');
+  const irisL = document.getElementById('irisL');
+  const irisR = document.getElementById('irisR');
+  const eyeL = document.getElementById('eyeL');
+  const eyeR = document.getElementById('eyeR');
+  const motionStatus = document.getElementById('motionStatus');
+
+  function selectCam(side) {
+    camFacing = side === 'front' ? 'user' : 'environment';
+    document.getElementById('frontCamBtn').classList.toggle('active', side === 'front');
+    document.getElementById('backCamBtn').classList.toggle('active', side === 'back');
+  }
+
+  async function startRobot() {
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: camFacing,
+          width: { ideal: 320 },
+          height: { ideal: 240 }
+        },
+        audio: false
+      });
+      video.srcObject = stream;
+
+      await video.play();
+
+      // fullscreen
+      try {
+        const el = document.documentElement;
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+      } catch(e) {}
+
+      // switch screens
+      document.getElementById('landing').classList.add('hide');
+      setTimeout(() => {
+        document.getElementById('landing').style.display = 'none';
+        document.getElementById('robotScreen').classList.add('active');
+      }, 600);
+
+      // wait for video ready then start tracking
+      video.addEventListener('loadeddata', () => {
+        motCanvas.width = video.videoWidth || 320;
+        motCanvas.height = video.videoHeight || 240;
+        startMotionTracking();
+        startBlinking();
+        startEyeSmooth();
+      }, { once: true });
+
+    } catch(err) {
+      alert('Camera access needed, fam. Check permissions 👀');
+      console.error(err);
+    }
+  }
+
+  // ── MOTION TRACKING ──
+  function startMotionTracking() {
+    function detect() {
+      if (!video.videoWidth) { animFrame = requestAnimationFrame(detect); return; }
+
+      motCtx.drawImage(video, 0, 0, motCanvas.width, motCanvas.height);
+      const frame = motCtx.getImageData(0, 0, motCanvas.width, motCanvas.height);
+      const data = frame.data;
+      const w = motCanvas.width;
+      const h = motCanvas.height;
+
+      if (prevData) {
+        let totalDiff = 0;
+        let sumX = 0, sumY = 0, count = 0;
+
+        // sample every 4th pixel for perf
+        for (let i = 0; i < data.length; i += 16) {
+          const diff = Math.abs(data[i] - prevData[i])
+                      + Math.abs(data[i+1] - prevData[i+1])
+                      + Math.abs(data[i+2] - prevData[i+2]);
+
+          if (diff > 30) {
+            const pixelIndex = i / 4;
+            const px = pixelIndex % w;
+            const py = Math.floor(pixelIndex / w);
+            sumX += px; sumY += py;
+            count++;
+            totalDiff += diff;
+          }
+        }
+
+        if (count > 20) {
+          // centroid of motion
+          const cx = sumX / count;
+          const cy = sumY / count;
+
+          // normalize to -1..1, flip x for mirroring if front cam
+          let nx = ((cx / w) - 0.5) * 2;
+          let ny = ((cy / h) - 0.5) * 2;
+          if (camFacing === 'user') nx = -nx;
+
+          targetX = nx * 0.55;
+          targetY = ny * 0.45;
+
+          const intensity = Math.min(count / 300, 1);
+          if (intensity > 0.3) {
+            motionStatus.textContent = '⬛ MOTION DETECTED';
+            motionStatus.style.color = '#ff3c5a';
+            motionStatus.style.textShadow = '0 0 8px #ff3c5a';
+          }
+        } else {
+          // drift back to center slowly
+          targetX *= 0.92;
+          targetY *= 0.92;
+          motionStatus.textContent = 'SCANNING...';
+          motionStatus.style.color = '#00ff88';
+          motionStatus.style.textShadow = '0 0 8px #00ff88';
+        }
+      }
+
+      prevData = new Uint8ClampedArray(data);
+      animFrame = requestAnimationFrame(detect);
+    }
+    detect();
+  }
+
+  // ── SMOOTH EYE MOVEMENT ──
+  function startEyeSmooth() {
+    const eyeSize = eyeL.offsetWidth;
+    const maxMove = eyeSize * 0.22;
+
+    function smooth() {
+      currentX += (targetX - currentX) * 0.1;
+      currentY += (targetY - currentY) * 0.1;
+
+      const tx = currentX * maxMove;
+      const ty = currentY * maxMove;
+
+      irisL.style.transform = `translate(${tx}px, ${ty}px)`;
+      irisR.style.transform = `translate(${tx}px, ${ty}px)`;
+
+      requestAnimationFrame(smooth);
+    }
+    smooth();
+  }
+
+  // ── AUTO BLINK ──
+  function startBlinking() {
+    function scheduleBlink() {
+      const delay = 2000 + Math.random() * 4000;
+      blinkTimer = setTimeout(() => {
+        blink();
+        scheduleBlink();
+      }, delay);
+    }
+
+    function blink() {
+      eyeL.classList.add('blink');
+      eyeR.classList.add('blink');
+      setTimeout(() => {
+        eyeL.classList.remove('blink');
+        eyeR.classList.remove('blink');
+        // sometimes double blink
+        if (Math.random() < 0.25) {
+          setTimeout(() => {
+            eyeL.classList.add('blink');
+            eyeR.classList.add('blink');
+            setTimeout(() => {
+              eyeL.classList.remove('blink');
+              eyeR.classList.remove('blink');
+            }, 100);
+          }, 180);
+        }
+      }, 120);
+    }
+
+    scheduleBlink();
+  }
+
+  // ── BACK ──
+  function goBack() {
+    if (animFrame) cancelAnimationFrame(animFrame);
+    if (blinkTimer) clearTimeout(blinkTimer);
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    prevData = null; targetX = 0; targetY = 0; currentX = 0; currentY = 0;
+
+    if (document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+
+    document.getElementById('robotScreen').classList.remove('active');
+    document.getElementById('landing').style.display = 'flex';
+    setTimeout(() => document.getElementById('landing').classList.remove('hide'), 50);
+
+    irisL.style.transform = '';
+    irisR.style.transform = '';
+  }
+
+  // prevent scroll bounce
+  document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+</script>
+</body>
+</html>
