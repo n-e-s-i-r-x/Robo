@@ -287,13 +287,20 @@
           document.getElementById('robotScreen').classList.add('active');
         }, 300);
 
-        video.addEventListener('loadeddata', () => {
+        // FIX: Check readyState first — after play() the video may already be loaded
+        const onVideoReady = () => {
           motCanvas.width = video.videoWidth || 320;
           motCanvas.height = video.videoHeight || 240;
           startMotion();
           startBlink();
           smoothLoop();
-        }, { once: true });
+        };
+
+        if (video.readyState >= 2) { // HAVE_CURRENT_DATA or better
+          onVideoReady();
+        } else {
+          video.addEventListener('loadeddata', onVideoReady, { once: true });
+        }
 
       } catch (err) {
         alert('Please allow camera access!');
