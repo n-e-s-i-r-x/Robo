@@ -119,7 +119,6 @@
       align-items: center;
       justify-content: center;
       flex-direction: row;
-      /* always landscape */
     }
 
     .eye {
@@ -129,7 +128,6 @@
       position: relative;
       overflow: hidden;
       background: transparent;
-      /* no black pupil – just an invisible container */
       transition: height 0.08s linear;
     }
 
@@ -143,17 +141,28 @@
       width: 28%;
       height: 28%;
       border-radius: 8px;
-      /* square with rounded corners */
       background: #fff;
-      /* overridden by JS to active skin color */
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      transition: transform 0.1s cubic-bezier(.2, .8, .3, 1);
       will-change: transform;
       box-shadow: none;
     }
+
+    /* debug indicator */
+    #debugDot {
+      position: fixed;
+      top: 8px;
+      right: 8px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #333;
+      z-index: 300;
+    }
+    #debugDot.cam-ok { background: #3bff7a; }
+    #debugDot.motion { background: #ffcc00; }
 
     /* back button */
     #backBtn {
@@ -191,6 +200,7 @@
       <div class="eye" id="eyeL"><div class="dot" id="dotL"></div></div>
       <div class="eye" id="eyeR"><div class="dot" id="dotR"></div></div>
     </div>
+    <div id="debugDot"></div>
     <button id="backBtn" onclick="goBack()">← EXIT</button>
   </div>
 
@@ -210,7 +220,6 @@
     let activeSkin = 0;
     const swatchContainer = document.getElementById('skins');
 
-    // build swatches
     SKINS.forEach((s, i) => {
       const sw = document.createElement('div');
       sw.className = 'skin-swatch' + (i === 0 ? ' selected' : '');
@@ -220,7 +229,6 @@
         document.querySelectorAll('.skin-swatch').forEach((el, j) =>
           el.classList.toggle('selected', j === i)
         );
-        // update moving dot color immediately
         if (document.getElementById('robotScreen').classList.contains('active')) {
           applyDotColor();
         }
@@ -228,7 +236,6 @@
       swatchContainer.appendChild(sw);
     });
 
-    // apply skin color to the moving dot (no black anywhere)
     function applyDotColor() {
       const c = SKINS[activeSkin].color;
       document.getElementById('dotL').style.background = c;
@@ -239,33 +246,36 @@
     let stream = null;
     let animFrame = null;
     let blinkTimer = null;
-    let prevEnhanced = null; // previous enhanced frame for motion comparison
-    let targetX = 0,
-      targetY = 0;
-    let currentX = 0,
-      currentY = 0;
+    let smoothFrame = null;
+    let prevGray = null;        // previous grayscale frame (1 channel)
+    let targetX = 0, targetY = 0;
+    let currentX = 0, currentY = 0;
+    let motionWorking = false;  // flag: has motion detection produced results?
+    let lastMotionTime = 0;     // timestamp of last detected motion
 
     const video = document.getElementById('cam');
     const motCanvas = document.getElementById('motionCanvas');
-    const motCtx = motCanvas.getContext('2d');
+    // FIX #1: willReadFrequently tells Chrome to keep canvas in CPU memory
+    // Without this, getImageData returns stale/empty pixels on GPU-accelerated canvases
+    const motCtx = motCanvas.getContext('2d', { willReadFrequently: true });
     const dotL = document.getElementById('dotL');
     const dotR = document.getElementById('dotR');
     const eyeL = document.getElementById('eyeL');
     const eyeR = document.getElementById('eyeR');
+    const debugDot = document.getElementById('debugDot');
 
     // ── START ──
     async function startRobot() {
-      applyDotColor(); // set moving square color, eyes stay transparent
+      applyDotColor();
 
       try {
-        // lock screen to landscape if possible (optional)
         if (screen.orientation && screen.orientation.lock) {
           screen.orientation.lock('landscape').catch(() => {});
         }
 
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: 'user', // front camera
+            facingMode: 'user',
             width: { ideal: 320 },
             height: { ideal: 240 }
           },
@@ -274,7 +284,7 @@
         video.srcObject = stream;
         await video.play();
 
-        // go fullscreen for immersion
+        // go fullscreen
         try {
           const el = document.documentElement;
           if (el.requestFullscreen) await el.requestFullscreen();
@@ -287,108 +297,156 @@
           document.getElementById('robotScreen').classList.add('active');
         }, 300);
 
-        // FIX: Check readyState first — after play() the video may already be loaded
-        const onVideoReady = () => {
-          motCanvas.width = video.videoWidth || 320;
-          motCanvas.height = video.videoHeight || 240;
-          startMotion();
-          startBlink();
-          smoothLoop();
-        };
+        // Wait until the video actually has frame data (videoWidth > 0)
+        // This is more reliable than readyState which can be >= 2 before frames exist
+        const waitForFrames = () => new Promise(resolve => {
+          const check = () => {
+            if (video.videoWidth > 0 && video.readyState >= 2) {
+              resolve();
+            } else {
+              requestAnimationFrame(check);
+            }
+          };
+          check();
+        });
 
-        if (video.readyState >= 2) { // HAVE_CURRENT_DATA or better
-          onVideoReady();
-        } else {
-          video.addEventListener('loadeddata', onVideoReady, { once: true });
-        }
+        await waitForFrames();
+
+        // Now we know the video has real frames — set up canvas to match
+        motCanvas.width = video.videoWidth;
+        motCanvas.height = video.videoHeight;
+
+        debugDot.classList.add('cam-ok');
+
+        startMotion();
+        startBlink();
+        smoothLoop();
+        startTouchInput();
 
       } catch (err) {
         alert('Please allow camera access!');
       }
     }
 
-    // ── MOTION DETECTION with night‑vision enhancement ──
+    // ── MOTION DETECTION ──
     function startMotion() {
-      const NIGHT_VISION_CONTRAST = 2.5; // amplify dim scenes
+      const MOTION_THRESHOLD = 25;   // per-pixel grayscale diff to count as motion
+      const MIN_PIXELS = 8;          // minimum changed pixels to trust the centroid
+      const DECAY = 0.85;            // how fast target returns to center with no motion
 
-      function enhanceAndDetect() {
+      function detect() {
         if (!video.videoWidth) {
-          animFrame = requestAnimationFrame(enhanceAndDetect);
+          animFrame = requestAnimationFrame(detect);
           return;
         }
 
-        // draw current frame
-        motCtx.drawImage(video, 0, 0, motCanvas.width, motCanvas.height);
-        const raw = motCtx.getImageData(0, 0, motCanvas.width, motCanvas.height);
-        const data = raw.data;
-        const w = motCanvas.width,
-          h = motCanvas.height;
+        try {
+          // draw current frame to canvas
+          motCtx.drawImage(video, 0, 0, motCanvas.width, motCanvas.height);
+          const raw = motCtx.getImageData(0, 0, motCanvas.width, motCanvas.height);
+          const data = raw.data;
+          const w = motCanvas.width;
+          const h = motCanvas.height;
+          const totalPixels = w * h;
 
-        // create enhanced (contrast‑stretched) grayscale version
-        const enhanced = new Uint8ClampedArray(data.length);
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i],
-            g = data[i + 1],
-            b = data[i + 2];
-          let gray = 0.299 * r + 0.587 * g + 0.114 * b;
-          gray = (gray - 128) * NIGHT_VISION_CONTRAST + 128;
-          gray = Math.max(0, Math.min(255, gray)) | 0;
-          enhanced[i] = enhanced[i + 1] = enhanced[i + 2] = gray;
-          enhanced[i + 3] = 255;
-        }
+          // build single-channel grayscale array (much lighter than RGBA)
+          const gray = new Uint8Array(totalPixels);
+          for (let i = 0; i < totalPixels; i++) {
+            const off = i * 4;
+            gray[i] = (data[off] * 77 + data[off + 1] * 150 + data[off + 2] * 29) >> 8;
+          }
 
-        // motion detection on enhanced frames
-        if (prevEnhanced) {
-          let sumX = 0,
-            sumY = 0,
-            count = 0;
-          const prev = prevEnhanced;
-          for (let i = 0; i < enhanced.length; i += 4) {
-            const diff =
-              Math.abs(enhanced[i] - prev[i]) +
-              Math.abs(enhanced[i + 1] - prev[i + 1]) +
-              Math.abs(enhanced[i + 2] - prev[i + 2]);
-            if (diff > 15) {
-              const idx = i / 4;
-              const px = idx % w;
-              const py = Math.floor(idx / w);
-              sumX += px;
-              sumY += py;
-              count++;
+          // compare with previous frame
+          if (prevGray) {
+            let sumX = 0, sumY = 0, count = 0;
+
+            for (let i = 0; i < totalPixels; i++) {
+              const diff = Math.abs(gray[i] - prevGray[i]);
+              if (diff > MOTION_THRESHOLD) {
+                const px = i % w;
+                const py = (i / w) | 0;
+                sumX += px;
+                sumY += py;
+                count++;
+              }
+            }
+
+            if (count > MIN_PIXELS) {
+              // front camera is mirrored — flip X
+              const nx = -((sumX / count / w) - 0.5) * 2;
+              const ny = ((sumY / count / h) - 0.5) * 2;
+              targetX = Math.max(-1, Math.min(1, nx));
+              targetY = Math.max(-1, Math.min(1, ny));
+              lastMotionTime = performance.now();
+
+              if (!motionWorking) {
+                motionWorking = true;
+                debugDot.classList.add('motion');
+              }
+            } else {
+              // decay toward center
+              targetX *= DECAY;
+              targetY *= DECAY;
             }
           }
 
-          if (count > 5) {
-            // front camera is mirrored – flip X
-            let nx = -((sumX / count / w) - 0.5) * 2;
-            let ny = ((sumY / count / h) - 0.5) * 2;
-            targetX = Math.max(-1, Math.min(1, nx));
-            targetY = Math.max(-1, Math.min(1, ny));
-          } else {
-            // gentle return to center when no movement
-            targetX *= 0.88;
-            targetY *= 0.88;
-          }
+          prevGray = gray;
+
+        } catch (err) {
+          // FIX #2: if getImageData fails (taint, security), don't kill the loop
+          // Just skip this frame and try again next frame
+          console.warn('Motion detection frame error:', err.message);
         }
 
-        prevEnhanced = enhanced;
-        animFrame = requestAnimationFrame(enhanceAndDetect);
+        animFrame = requestAnimationFrame(detect);
       }
-      enhanceAndDetect();
+
+      detect();
+    }
+
+    // ── TOUCH / MOUSE FALLBACK INPUT ──
+    // FIX #3: If camera motion detection fails, touch/mouse still moves the eyes
+    function startTouchInput() {
+      const screen = document.getElementById('robotScreen');
+
+      function handleInput(clientX, clientY) {
+        const nx = (clientX / window.innerWidth - 0.5) * 2;
+        const ny = (clientY / window.innerHeight - 0.5) * 2;
+        // override motion target with direct input
+        targetX = Math.max(-1, Math.min(1, nx));
+        targetY = Math.max(-1, Math.min(1, ny));
+        lastMotionTime = performance.now();
+      }
+
+      screen.addEventListener('touchstart', e => {
+        const t = e.touches[0];
+        handleInput(t.clientX, t.clientY);
+      }, { passive: true });
+
+      screen.addEventListener('touchmove', e => {
+        const t = e.touches[0];
+        handleInput(t.clientX, t.clientY);
+      }, { passive: true });
+
+      screen.addEventListener('mousemove', e => {
+        handleInput(e.clientX, e.clientY);
+      });
     }
 
     // ── SMOOTH MOVEMENT ──
     function smoothLoop() {
+      const LERP = 0.15;   // smoothing factor — higher = snappier
+
       function step() {
         const maxMove = eyeL.offsetWidth * 0.28;
-        currentX += (targetX - currentX) * 0.12;
-        currentY += (targetY - currentY) * 0.12;
+        currentX += (targetX - currentX) * LERP;
+        currentY += (targetY - currentY) * LERP;
         const tx = currentX * maxMove;
         const ty = currentY * maxMove;
         const t = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
         dotL.style.transform = t;
         dotR.style.transform = t;
-        requestAnimationFrame(step);
+        smoothFrame = requestAnimationFrame(step);
       }
       step();
     }
@@ -420,13 +478,17 @@
     // ── BACK ──
     function goBack() {
       cancelAnimationFrame(animFrame);
+      cancelAnimationFrame(smoothFrame);
       clearTimeout(blinkTimer);
       if (stream) stream.getTracks().forEach(t => t.stop());
-      prevEnhanced = null;
+      prevGray = null;
       targetX = 0;
       targetY = 0;
       currentX = 0;
       currentY = 0;
+      motionWorking = false;
+      lastMotionTime = 0;
+      debugDot.classList.remove('cam-ok', 'motion');
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       document.getElementById('robotScreen').classList.remove('active');
       const landing = document.getElementById('landing');
