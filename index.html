@@ -5,10 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>R0B0T</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-    html, body {
-      width: 100%; height: 100%;
+    html,
+    body {
+      width: 100%;
+      height: 100%;
       background: #111;
       font-family: monospace;
       overflow: hidden;
@@ -18,7 +26,8 @@
 
     /* ── LANDING ── */
     #landing {
-      position: fixed; inset: 0;
+      position: fixed;
+      inset: 0;
       background: #111;
       display: flex;
       flex-direction: column;
@@ -28,7 +37,10 @@
       z-index: 100;
       transition: opacity 0.3s;
     }
-    #landing.hide { opacity: 0; pointer-events: none; }
+    #landing.hide {
+      opacity: 0;
+      pointer-events: none;
+    }
 
     #landing h1 {
       font-size: clamp(3rem, 14vw, 6rem);
@@ -75,58 +87,39 @@
       transition: border-color 0.15s;
       flex-shrink: 0;
     }
-    .skin-swatch.selected { border-color: #fff; }
-
-    /* layout toggle */
-    .layout-label {
-      color: #555;
-      font-size: 0.65rem;
-      letter-spacing: 0.15em;
-    }
-
-    .layout-btns {
-      display: flex;
-      gap: 10px;
-    }
-
-    .layout-btns button {
-      background: #222;
-      border: 2px solid #444;
-      color: #aaa;
-      font-family: monospace;
-      font-size: 0.75rem;
-      padding: 6px 18px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .layout-btns button.active-layout {
+    .skin-swatch.selected {
       border-color: #fff;
-      color: #fff;
-      background: #333;
     }
 
     /* ── ROBOT SCREEN ── */
     #robotScreen {
-      position: fixed; inset: 0;
+      position: fixed;
+      inset: 0;
       display: none;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       background: #111;
     }
-    #robotScreen.active { display: flex; }
+    #robotScreen.active {
+      display: flex;
+    }
 
-    #cam { display: none; }
-    #motionCanvas { display: none; }
+    #cam {
+      display: none;
+    }
+    #motionCanvas {
+      display: none;
+    }
 
-    /* ── EYES ── */
+    /* ── EYES (landscape only) ── */
     .eyes-wrap {
       display: flex;
       gap: clamp(28px, 9vw, 64px);
       align-items: center;
       justify-content: center;
-      transition: flex-direction 0.2s;
+      flex-direction: row;
+      /* always landscape */
     }
 
     .eye {
@@ -135,24 +128,31 @@
       border-radius: 22px;
       position: relative;
       overflow: hidden;
-      flex-shrink: 0;
+      background: transparent;
+      /* no black pupil – just an invisible container */
       transition: height 0.08s linear;
-      background: #1a1a1a; /* dark background, dot will be skin color */
     }
 
-    .eye.blink { height: 10px !important; border-radius: 5px; }
+    .eye.blink {
+      height: 10px !important;
+      border-radius: 5px;
+    }
 
-    /* the small moving shape */
+    /* the small moving shape – plain color, no black */
     .dot {
       width: 28%;
       height: 28%;
       border-radius: 8px;
-      background: #fff; /* will be overridden by JS */
+      /* square with rounded corners */
+      background: #fff;
+      /* overridden by JS to active skin color */
       position: absolute;
-      top: 50%; left: 50%;
+      top: 50%;
+      left: 50%;
       transform: translate(-50%, -50%);
-      transition: transform 0.1s cubic-bezier(.2,.8,.3,1);
+      transition: transform 0.1s cubic-bezier(.2, .8, .3, 1);
       will-change: transform;
+      box-shadow: none;
     }
 
     /* back button */
@@ -175,261 +175,262 @@
   </style>
 </head>
 <body>
-
-<!-- LANDING -->
-<div id="landing">
-  <h1>R0B0T</h1>
-  <button id="startBtn" onclick="startRobot()">START</button>
-  <div class="skin-label">EYE COLOR</div>
-  <div class="skins" id="skins"></div>
-  <div class="layout-label">LAYOUT</div>
-  <div class="layout-btns">
-    <button id="layoutLandscape" class="active-layout" onclick="setLayout('landscape')">⟷ Landscape</button>
-    <button id="layoutVertical" onclick="setLayout('vertical')">⟳ Vertical</button>
+  <!-- LANDING -->
+  <div id="landing">
+    <h1>R0B0T</h1>
+    <button id="startBtn" onclick="startRobot()">START</button>
+    <div class="skin-label">EYE COLOR</div>
+    <div class="skins" id="skins"></div>
   </div>
-</div>
 
-<!-- ROBOT -->
-<div id="robotScreen">
-  <video id="cam" autoplay playsinline muted></video>
-  <canvas id="motionCanvas"></canvas>
-  <div class="eyes-wrap" id="eyesWrap">
-    <div class="eye" id="eyeL"><div class="dot" id="dotL"></div></div>
-    <div class="eye" id="eyeR"><div class="dot" id="dotR"></div></div>
+  <!-- ROBOT -->
+  <div id="robotScreen">
+    <video id="cam" autoplay playsinline muted></video>
+    <canvas id="motionCanvas"></canvas>
+    <div class="eyes-wrap">
+      <div class="eye" id="eyeL"><div class="dot" id="dotL"></div></div>
+      <div class="eye" id="eyeR"><div class="dot" id="dotR"></div></div>
+    </div>
+    <button id="backBtn" onclick="goBack()">← EXIT</button>
   </div>
-  <button id="backBtn" onclick="goBack()">← EXIT</button>
-</div>
 
-<script>
-  // ── SKINS ──
-  const SKINS = [
-    { color: '#ffffff' },
-    { color: '#ff3b3b' },
-    { color: '#3b8fff' },
-    { color: '#3bff7a' },
-    { color: '#ffcc00' },
-    { color: '#ff6aff' },
-    { color: '#ff8c00' },
-    { color: '#00e5ff' },
-  ];
+  <script>
+    // ── SKINS ──
+    const SKINS = [
+      { color: '#ffffff' },
+      { color: '#ff3b3b' },
+      { color: '#3b8fff' },
+      { color: '#3bff7a' },
+      { color: '#ffcc00' },
+      { color: '#ff6aff' },
+      { color: '#ff8c00' },
+      { color: '#00e5ff' },
+    ];
 
-  let activeSkin = 0;
-  let layoutMode = 'landscape'; // default
-  const swatchContainer = document.getElementById('skins');
+    let activeSkin = 0;
+    const swatchContainer = document.getElementById('skins');
 
-  // build swatches
-  SKINS.forEach((s, i) => {
-    const sw = document.createElement('div');
-    sw.className = 'skin-swatch' + (i === 0 ? ' selected' : '');
-    sw.style.background = s.color;
-    sw.onclick = () => {
-      activeSkin = i;
-      document.querySelectorAll('.skin-swatch').forEach((el, j) =>
-        el.classList.toggle('selected', j === i)
-      );
-      // if already inside robot, update dot color immediately
-      if (document.getElementById('robotScreen').classList.contains('active')) {
-        applyDotColor();
-      }
-    };
-    swatchContainer.appendChild(sw);
-  });
+    // build swatches
+    SKINS.forEach((s, i) => {
+      const sw = document.createElement('div');
+      sw.className = 'skin-swatch' + (i === 0 ? ' selected' : '');
+      sw.style.background = s.color;
+      sw.onclick = () => {
+        activeSkin = i;
+        document.querySelectorAll('.skin-swatch').forEach((el, j) =>
+          el.classList.toggle('selected', j === i)
+        );
+        // update moving dot color immediately
+        if (document.getElementById('robotScreen').classList.contains('active')) {
+          applyDotColor();
+        }
+      };
+      swatchContainer.appendChild(sw);
+    });
 
-  // layout toggle
-  function setLayout(mode) {
-    layoutMode = mode;
-    document.getElementById('layoutLandscape').classList.toggle('active-layout', mode === 'landscape');
-    document.getElementById('layoutVertical').classList.toggle('active-layout', mode === 'vertical');
-  }
-
-  function applyLayout() {
-    const wrap = document.getElementById('eyesWrap');
-    if (layoutMode === 'vertical') {
-      wrap.style.flexDirection = 'column';
-    } else {
-      wrap.style.flexDirection = 'row';
+    // apply skin color to the moving dot (no black anywhere)
+    function applyDotColor() {
+      const c = SKINS[activeSkin].color;
+      document.getElementById('dotL').style.background = c;
+      document.getElementById('dotR').style.background = c;
     }
-  }
 
-  // apply skin color to the moving dot (eyes stay dark)
-  function applyDotColor() {
-    const c = SKINS[activeSkin].color;
-    document.getElementById('dotL').style.background = c;
-    document.getElementById('dotR').style.background = c;
-  }
+    // ── STATE ──
+    let stream = null;
+    let animFrame = null;
+    let blinkTimer = null;
+    let prevEnhanced = null; // previous enhanced frame for motion comparison
+    let targetX = 0,
+      targetY = 0;
+    let currentX = 0,
+      currentY = 0;
 
-  // ── STATE ──
-  let stream = null;
-  let animFrame = null;
-  let blinkTimer = null;
-  let prevEnhanced = null;   // previous enhanced frame for motion comparison
-  let targetX = 0, targetY = 0;
-  let currentX = 0, currentY = 0;
+    const video = document.getElementById('cam');
+    const motCanvas = document.getElementById('motionCanvas');
+    const motCtx = motCanvas.getContext('2d');
+    const dotL = document.getElementById('dotL');
+    const dotR = document.getElementById('dotR');
+    const eyeL = document.getElementById('eyeL');
+    const eyeR = document.getElementById('eyeR');
 
-  const video = document.getElementById('cam');
-  const motCanvas = document.getElementById('motionCanvas');
-  const motCtx = motCanvas.getContext('2d');
-  const dotL = document.getElementById('dotL');
-  const dotR = document.getElementById('dotR');
-  const eyeL = document.getElementById('eyeL');
-  const eyeR = document.getElementById('eyeR');
-
-  // ── START ──
-  async function startRobot() {
-    applyDotColor();
-    applyLayout();
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
-        audio: false
-      });
-      video.srcObject = stream;
-      await video.play();
+    // ── START ──
+    async function startRobot() {
+      applyDotColor(); // set moving square color, eyes stay transparent
 
       try {
-        const el = document.documentElement;
-        if (el.requestFullscreen) await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
-      } catch(e) {}
+        // lock screen to landscape if possible (optional)
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
 
-      document.getElementById('landing').classList.add('hide');
-      setTimeout(() => {
-        document.getElementById('landing').style.display = 'none';
-        document.getElementById('robotScreen').classList.add('active');
-      }, 300);
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'user', // front camera
+            width: { ideal: 320 },
+            height: { ideal: 240 }
+          },
+          audio: false
+        });
+        video.srcObject = stream;
+        await video.play();
 
-      video.addEventListener('loadeddata', () => {
-        motCanvas.width = video.videoWidth || 320;
-        motCanvas.height = video.videoHeight || 240;
-        startMotion();
-        startBlink();
-        smoothLoop();
-      }, { once: true });
+        // go fullscreen for immersion
+        try {
+          const el = document.documentElement;
+          if (el.requestFullscreen) await el.requestFullscreen();
+          else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+        } catch (e) {}
 
-    } catch(err) {
-      alert('Allow camera access!');
+        document.getElementById('landing').classList.add('hide');
+        setTimeout(() => {
+          document.getElementById('landing').style.display = 'none';
+          document.getElementById('robotScreen').classList.add('active');
+        }, 300);
+
+        video.addEventListener('loadeddata', () => {
+          motCanvas.width = video.videoWidth || 320;
+          motCanvas.height = video.videoHeight || 240;
+          startMotion();
+          startBlink();
+          smoothLoop();
+        }, { once: true });
+
+      } catch (err) {
+        alert('Please allow camera access!');
+      }
     }
-  }
 
-  // ── MOTION DETECTION with night‑vision enhancement ──
-  function startMotion() {
-    const NIGHT_VISION_CONTRAST = 2.5;  // amplify low‑light differences
+    // ── MOTION DETECTION with night‑vision enhancement ──
+    function startMotion() {
+      const NIGHT_VISION_CONTRAST = 2.5; // amplify dim scenes
 
-    function enhanceAndDetect() {
-      if (!video.videoWidth) {
-        animFrame = requestAnimationFrame(enhanceAndDetect);
-        return;
-      }
+      function enhanceAndDetect() {
+        if (!video.videoWidth) {
+          animFrame = requestAnimationFrame(enhanceAndDetect);
+          return;
+        }
 
-      // draw raw frame
-      motCtx.drawImage(video, 0, 0, motCanvas.width, motCanvas.height);
-      const raw = motCtx.getImageData(0, 0, motCanvas.width, motCanvas.height);
-      const data = raw.data;
-      const w = motCanvas.width, h = motCanvas.height;
+        // draw current frame
+        motCtx.drawImage(video, 0, 0, motCanvas.width, motCanvas.height);
+        const raw = motCtx.getImageData(0, 0, motCanvas.width, motCanvas.height);
+        const data = raw.data;
+        const w = motCanvas.width,
+          h = motCanvas.height;
 
-      // create enhanced copy (grayscale + contrast)
-      const enhanced = new Uint8ClampedArray(data.length);
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i], g = data[i+1], b = data[i+2];
-        // luminance
-        let gray = 0.299 * r + 0.587 * g + 0.114 * b;
-        // contrast stretch
-        gray = (gray - 128) * NIGHT_VISION_CONTRAST + 128;
-        gray = Math.max(0, Math.min(255, gray)) | 0;
-        enhanced[i] = enhanced[i+1] = enhanced[i+2] = gray;
-        enhanced[i+3] = 255; // opaque
-      }
+        // create enhanced (contrast‑stretched) grayscale version
+        const enhanced = new Uint8ClampedArray(data.length);
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i],
+            g = data[i + 1],
+            b = data[i + 2];
+          let gray = 0.299 * r + 0.587 * g + 0.114 * b;
+          gray = (gray - 128) * NIGHT_VISION_CONTRAST + 128;
+          gray = Math.max(0, Math.min(255, gray)) | 0;
+          enhanced[i] = enhanced[i + 1] = enhanced[i + 2] = gray;
+          enhanced[i + 3] = 255;
+        }
 
-      // motion detection on enhanced frames
-      if (prevEnhanced) {
-        let sumX = 0, sumY = 0, count = 0;
-        const prev = prevEnhanced;
-        for (let i = 0; i < enhanced.length; i += 4) {
-          const diff =
-            Math.abs(enhanced[i]   - prev[i])   +
-            Math.abs(enhanced[i+1] - prev[i+1]) +
-            Math.abs(enhanced[i+2] - prev[i+2]);
-          if (diff > 15) {   // lowered threshold
-            const idx = i / 4;
-            const px = idx % w;
-            const py = Math.floor(idx / w);
-            sumX += px; sumY += py;
-            count++;
+        // motion detection on enhanced frames
+        if (prevEnhanced) {
+          let sumX = 0,
+            sumY = 0,
+            count = 0;
+          const prev = prevEnhanced;
+          for (let i = 0; i < enhanced.length; i += 4) {
+            const diff =
+              Math.abs(enhanced[i] - prev[i]) +
+              Math.abs(enhanced[i + 1] - prev[i + 1]) +
+              Math.abs(enhanced[i + 2] - prev[i + 2]);
+            if (diff > 15) {
+              const idx = i / 4;
+              const px = idx % w;
+              const py = Math.floor(idx / w);
+              sumX += px;
+              sumY += py;
+              count++;
+            }
+          }
+
+          if (count > 5) {
+            // front camera is mirrored – flip X
+            let nx = -((sumX / count / w) - 0.5) * 2;
+            let ny = ((sumY / count / h) - 0.5) * 2;
+            targetX = Math.max(-1, Math.min(1, nx));
+            targetY = Math.max(-1, Math.min(1, ny));
+          } else {
+            // gentle return to center when no movement
+            targetX *= 0.88;
+            targetY *= 0.88;
           }
         }
 
-        if (count > 5) {   // less strict minimum
-          // front camera is mirrored → flip X
-          let nx = -((sumX / count / w) - 0.5) * 2;
-          let ny =  ((sumY / count / h) - 0.5) * 2;
-          // clamp to avoid extreme jumps
-          targetX = Math.max(-1, Math.min(1, nx));
-          targetY = Math.max(-1, Math.min(1, ny));
-        } else {
-          // gentle return to center when no motion
-          targetX *= 0.88;
-          targetY *= 0.88;
-        }
+        prevEnhanced = enhanced;
+        animFrame = requestAnimationFrame(enhanceAndDetect);
       }
-
-      prevEnhanced = enhanced; // store current enhanced frame for next comparison
-      animFrame = requestAnimationFrame(enhanceAndDetect);
+      enhanceAndDetect();
     }
-    enhanceAndDetect();
-  }
 
-  // ── SMOOTH MOVEMENT ──
-  function smoothLoop() {
-    function step() {
-      // use eye size to calculate max movement (28% of eye width)
-      const maxMove = eyeL.offsetWidth * 0.28;
-      currentX += (targetX - currentX) * 0.12;
-      currentY += (targetY - currentY) * 0.12;
-      const tx = currentX * maxMove;
-      const ty = currentY * maxMove;
-      const t = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
-      dotL.style.transform = t;
-      dotR.style.transform = t;
-      requestAnimationFrame(step);
+    // ── SMOOTH MOVEMENT ──
+    function smoothLoop() {
+      function step() {
+        const maxMove = eyeL.offsetWidth * 0.28;
+        currentX += (targetX - currentX) * 0.12;
+        currentY += (targetY - currentY) * 0.12;
+        const tx = currentX * maxMove;
+        const ty = currentY * maxMove;
+        const t = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
+        dotL.style.transform = t;
+        dotR.style.transform = t;
+        requestAnimationFrame(step);
+      }
+      step();
     }
-    step();
-  }
 
-  // ── BLINK ──
-  function startBlink() {
-    function doBlink() {
-      eyeL.classList.add('blink'); eyeR.classList.add('blink');
-      setTimeout(() => {
-        eyeL.classList.remove('blink'); eyeR.classList.remove('blink');
-        if (Math.random() < 0.2) {
-          setTimeout(() => {
-            eyeL.classList.add('blink'); eyeR.classList.add('blink');
-            setTimeout(() => { eyeL.classList.remove('blink'); eyeR.classList.remove('blink'); }, 100);
-          }, 180);
-        }
-      }, 110);
-      blinkTimer = setTimeout(doBlink, 2000 + Math.random() * 4000);
+    // ── BLINK ──
+    function startBlink() {
+      function doBlink() {
+        eyeL.classList.add('blink');
+        eyeR.classList.add('blink');
+        setTimeout(() => {
+          eyeL.classList.remove('blink');
+          eyeR.classList.remove('blink');
+          if (Math.random() < 0.2) {
+            setTimeout(() => {
+              eyeL.classList.add('blink');
+              eyeR.classList.add('blink');
+              setTimeout(() => {
+                eyeL.classList.remove('blink');
+                eyeR.classList.remove('blink');
+              }, 100);
+            }, 180);
+          }
+        }, 110);
+        blinkTimer = setTimeout(doBlink, 2000 + Math.random() * 4000);
+      }
+      blinkTimer = setTimeout(doBlink, 1200);
     }
-    blinkTimer = setTimeout(doBlink, 1200);
-  }
 
-  // ── BACK ──
-  function goBack() {
-    cancelAnimationFrame(animFrame);
-    clearTimeout(blinkTimer);
-    if (stream) stream.getTracks().forEach(t => t.stop());
-    prevEnhanced = null; targetX = 0; targetY = 0; currentX = 0; currentY = 0;
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    document.getElementById('robotScreen').classList.remove('active');
-    const landing = document.getElementById('landing');
-    landing.style.display = 'flex';
-    setTimeout(() => landing.classList.remove('hide'), 20);
-    dotL.style.transform = 'translate(-50%, -50%)';
-    dotR.style.transform = 'translate(-50%, -50%)';
-  }
+    // ── BACK ──
+    function goBack() {
+      cancelAnimationFrame(animFrame);
+      clearTimeout(blinkTimer);
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      prevEnhanced = null;
+      targetX = 0;
+      targetY = 0;
+      currentX = 0;
+      currentY = 0;
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      document.getElementById('robotScreen').classList.remove('active');
+      const landing = document.getElementById('landing');
+      landing.style.display = 'flex';
+      setTimeout(() => landing.classList.remove('hide'), 20);
+      dotL.style.transform = 'translate(-50%, -50%)';
+      dotR.style.transform = 'translate(-50%, -50%)';
+    }
 
-  // prevent unwanted touch scrolling
-  document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-</script>
+    // prevent unwanted touch scrolling
+    document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+  </script>
 </body>
 </html>
